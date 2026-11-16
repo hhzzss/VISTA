@@ -144,15 +144,11 @@ int FastExplorationManager::planExploreMotion(
 
   if (grid_ids.empty()) {
 
+    return NO_GRID;
+
     // No grid is assigned to this drone, but keep moving is necessary
     // Move to the closest targets
     ROS_WARN("Empty grid");
-    // Check if there are any frontiers to explore
-    if (ed_->averages_.empty()) {
-      ROS_WARN("No frontiers available, cannot plan motion");
-      return FAIL;
-    }
-
 
     double min_cost = 100000;
     int min_cost_id = -1;
@@ -165,13 +161,6 @@ int FastExplorationManager::planExploreMotion(
         min_cost_id = i;
       }
     }
-
-    // Safety check
-    if (min_cost_id < 0 || min_cost_id >= ed_->points_.size()) {
-      ROS_WARN("Failed to find valid target");
-      return FAIL;
-    }
-
     next_pos = ed_->points_[min_cost_id];
     next_yaw = ed_->yaws_[min_cost_id];
 

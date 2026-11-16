@@ -15,7 +15,7 @@ using std::pair;
 using std::shared_ptr;
 using std::unique_ptr;
 using std::unordered_map;
-using std::vector;
+
 
 class RayCaster;
 
@@ -47,10 +47,10 @@ public:
 
   // Vertices and their box in xy plane, in current drone's frame
   Eigen::Vector3d vmin_, vmax_;
-  vector<Eigen::Vector3d> vertices_;
+  std::vector<Eigen::Vector3d> vertices_;
 
   // Normals of separating lines in xy plane, associated with vertices_
-  vector<Eigen::Vector3d> normals_;
+  std::vector<Eigen::Vector3d> normals_;
 };
 
 class UniformGrid {
@@ -61,17 +61,17 @@ public:
 
   void initGridData();
   void updateBaseCoor();
-  void updateGridData(const int& drone_id, vector<int>& grid_ids, vector<int>& parti_ids,
-      vector<int>& parti_ids_all);
-  void activateGrids(const vector<int>& ids);
+  void updateGridData(const int& drone_id, std::vector<int>& grid_ids, std::vector<int>& parti_ids,
+      std::vector<int>& parti_ids_all);
+  void activateGrids(const std::vector<int>& ids);
 
-  void inputFrontiers(const vector<Eigen::Vector3d>& avgs);
-  void getCostMatrix(const vector<Eigen::Vector3d>& positions,
-      const vector<Eigen::Vector3d>& velocities, const vector<int>& prev_first_grid,
-      const vector<int>& grid_ids, Eigen::MatrixXd& mat);
-  void getGridTour(const vector<int>& ids, vector<Eigen::Vector3d>& tour);
-  void getFrontiersInGrid(const int& grid_id, vector<int>& ftr_ids);
-  void getGridMarker(vector<Eigen::Vector3d>& pts1, vector<Eigen::Vector3d>& pts2);
+  void inputFrontiers(const std::vector<Eigen::Vector3d>& avgs);
+  void getCostMatrix(const std::vector<Eigen::Vector3d>& positions,
+      const std::vector<Eigen::Vector3d>& velocities, const std::vector<int>& prev_first_grid,
+      const std::vector<int>& grid_ids, Eigen::MatrixXd& mat);
+  void getGridTour(const std::vector<int>& ids, std::vector<Eigen::Vector3d>& tour);
+  void getFrontiersInGrid(const int& grid_id, std::vector<int>& ftr_ids);
+  void getGridMarker(std::vector<Eigen::Vector3d>& pts1, std::vector<Eigen::Vector3d>& pts2);
 
 private:
   void updateGridInfo(const Eigen::Vector3i& id);
@@ -85,12 +85,12 @@ private:
 
   shared_ptr<EDTEnvironment> edt_;
   unique_ptr<Astar> path_finder_;
-  vector<GridInfo> grid_data_;
+  std::vector<GridInfo> grid_data_;
 
-  vector<int> relevant_id_;
+  std::vector<int> relevant_id_;
   unordered_map<int, int> relevant_map_;
   bool initialized_;
-  vector<int> extra_ids_;
+  std::vector<int> extra_ids_;
 
   Eigen::Vector3d resolution_;
   Eigen::Vector3d min_, max_;

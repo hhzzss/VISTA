@@ -15,7 +15,7 @@ using std::queue;
 using std::shared_ptr;
 using std::unique_ptr;
 using std::unordered_map;
-using std::vector;
+
 using std::cout;
 using Eigen::Vector3d;
 using Eigen::Vector3i;
@@ -65,12 +65,12 @@ public:
 
   double costTo(const ViewNode::Ptr& node);
   static double computeCost(const Vector3d& p1, const Vector3d& p2, const double& y1,
-      const double& y2, const Vector3d& v1, const double& yd1, vector<Vector3d>& path);
+      const double& y2, const Vector3d& v1, const double& yd1, std::vector<Vector3d>& path);
   // Coarse to fine path searching
-  static double searchPath(const Vector3d& p1, const Vector3d& p2, vector<Vector3d>& path);
+  static double searchPath(const Vector3d& p1, const Vector3d& p2, std::vector<Vector3d>& path);
 
   // Data
-  vector<ViewNode::Ptr> neighbors_;
+  std::vector<ViewNode::Ptr> neighbors_;
   ViewNode::Ptr parent_;
   Vector3d pos_, vel_;
   double yaw_, yaw_dot_;

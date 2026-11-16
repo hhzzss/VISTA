@@ -19,7 +19,7 @@ using std::queue;
 using std::shared_ptr;
 using std::unique_ptr;
 using std::unordered_map;
-using std::vector;
+
 
 namespace fast_planner {
 // GraphSearch that operates on different types of node using Dijkstra algorithm
@@ -36,10 +36,10 @@ public:
   void print();
   void addNode(const shared_ptr<NodeT>& node);
   void addEdge(const int& from, const int& to);
-  void DijkstraSearch(const int& start, const int& goal, vector<shared_ptr<NodeT>>& path);
+  void DijkstraSearch(const int& start, const int& goal, std::vector<shared_ptr<NodeT>>& path);
 
 private:
-  vector<shared_ptr<NodeT>> nodes_;
+  std::vector<shared_ptr<NodeT>> nodes_;
   int node_num_;
   int edge_num_;
 };
@@ -74,11 +74,11 @@ void GraphSearch<NodeT>::addEdge(const int& from, const int& to) {
 
 template <typename NodeT>
 void GraphSearch<NodeT>::DijkstraSearch(
-    const int& start, const int& goal, vector<shared_ptr<NodeT>>& path) {
+    const int& start, const int& goal, std::vector<shared_ptr<NodeT>>& path) {
   // std::cout << "Node: " << node_num_ << ", edge: " << edge_num_ << std::endl;
   // Basic structure used by Dijkstra
   // unordered_map<int, int> close_set;
-  priority_queue<shared_ptr<NodeT>, vector<shared_ptr<NodeT>>, NodeCompare<NodeT>> open_set;
+  priority_queue<shared_ptr<NodeT>, std::vector<shared_ptr<NodeT>>, NodeCompare<NodeT>> open_set;
 
   shared_ptr<NodeT> start_v = nodes_[start];
   shared_ptr<NodeT> end_v = nodes_[goal];

@@ -65,7 +65,7 @@ void PerceptionUtils::setPose(const Vector3d& pos, const double& yaw) {
   for (auto& n : normals_) n = R_wc * n;
 }
 
-void PerceptionUtils::getFOV(vector<Vector3d>& list1, vector<Vector3d>& list2) {
+void PerceptionUtils::getFOV(std::vector<Vector3d>& list1, std::vector<Vector3d>& list2) {
   list1.clear();
   list2.clear();
 
@@ -96,7 +96,7 @@ void PerceptionUtils::getFOVBoundingBox(Vector3d& bmin, Vector3d& bmax) {
   double right = yaw_ - right_angle_;
   Vector3d left_pt = pos_ + max_dist_ * Vector3d(cos(left), sin(left), 0);
   Vector3d right_pt = pos_ + max_dist_ * Vector3d(cos(right), sin(right), 0);
-  vector<Vector3d> points = { left_pt, right_pt };
+  std::vector<Vector3d> points = { left_pt, right_pt };
   if (left > 0 && right < 0)
     points.push_back(pos_ + max_dist_ * Vector3d(1, 0, 0));
   else if (left > M_PI_2 && right < M_PI_2)

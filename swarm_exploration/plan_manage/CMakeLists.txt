@@ -46,6 +46,7 @@ add_executable(fast_planner_node
   src/topo_replan_fsm.cpp
   test/local_explore_fsm.cpp
   src/planner_manager.cpp
+    src/pointcloud_collision.cpp
   src/planner_manager_dev.cpp
   )
 target_link_libraries(fast_planner_node 
@@ -54,6 +55,7 @@ target_link_libraries(fast_planner_node
 
 add_library(plan_manage 
   src/planner_manager.cpp
+    src/pointcloud_collision.cpp
   src/planner_manager_dev.cpp
   )
 target_link_libraries(plan_manage ${catkin_LIBRARIES})
@@ -66,6 +68,7 @@ target_link_libraries(traj_server ${catkin_LIBRARIES})
 # add_executable(compare_topo
 #   src/compare_topo.cpp 
 #   src/planner_manager.cpp
+#    src/pointcloud_collision.cpp
 #   )
 # target_link_libraries(compare_topo 
 #   ${catkin_LIBRARIES}

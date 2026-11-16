@@ -19,7 +19,7 @@ using std::queue;
 using std::shared_ptr;
 using std::unique_ptr;
 using std::unordered_map;
-using std::vector;
+
 
 class RayCaster;
 
@@ -101,11 +101,11 @@ public:
   void addEdge(const int& from, const int& to);
 
   void setParams(const double& w, const double& my, const double& dt);
-  void dijkstraSearch(const int& start, const int& goal, vector<YawVertex::Ptr>& path);
+  void dijkstraSearch(const int& start, const int& goal, std::vector<YawVertex::Ptr>& path);
 
 private:
   double penal(const double& diff);
-  vector<YawVertex::Ptr> vertice_;
+  std::vector<YawVertex::Ptr> vertice_;
   double w_;
   double max_yaw_rate_;
   double dt_;
@@ -116,7 +116,7 @@ private:
 class CastFlags {
 private:
   /* data */
-  vector<char> flags_;
+  std::vector<char> flags_;
   Eigen::Vector3i lb_, ub_, cells_;
 
 public:
@@ -155,14 +155,14 @@ public:
   ~HeadingPlanner();
 
   void setMap(const shared_ptr<SDFMap>& map);
-  void searchPathOfYaw(const vector<Eigen::Vector3d>& pts, const vector<double>& yaws,
-      const double& dt, const Eigen::MatrixXd& ctrl_pts, vector<double>& path);
+  void searchPathOfYaw(const std::vector<Eigen::Vector3d>& pts, const std::vector<double>& yaws,
+      const double& dt, const Eigen::MatrixXd& ctrl_pts, std::vector<double>& path);
 
   // frontier-based IG, not good to evaluate information gain
-  void setFrontier(const vector<vector<Eigen::Vector3d>>& frontier);
+  void setFrontier(const std::vector<std::vector<Eigen::Vector3d>>& frontier);
   void calcVisibFrontier(
       const Eigen::Vector3d& pt, const double& yaw, unordered_map<int, int>& visib_idx);
-  void showVisibFrontier(const vector<YawVertex::Ptr>& path);
+  void showVisibFrontier(const std::vector<YawVertex::Ptr>& path);
   double calcInfoGain(const Eigen::Vector3d& pt, const double& yaw, const int& task_id);
 
 private:
@@ -174,11 +174,11 @@ private:
       const Eigen::MatrixXd& ctrl_pts, const int& task_id);
   // iterate within volume and check visibility, voexl are weighted uniformly
   bool insideFoV(
-      const Eigen::Vector3d& pw, const Eigen::Vector3d& pc, const vector<Eigen::Vector3d>& normals);
+      const Eigen::Vector3d& pw, const Eigen::Vector3d& pc, const std::vector<Eigen::Vector3d>& normals);
   void distToPathAndCurPos(const Eigen::Vector3d& check_pt, const Eigen::MatrixXd& ctrl_pts,
       std::pair<double, double>& dists, bool debug = false);
   void axisAlignedBoundingBox(
-      const vector<Eigen::Vector3d>& points, Eigen::Vector3d& lb, Eigen::Vector3d& ub);
+      const std::vector<Eigen::Vector3d>& points, Eigen::Vector3d& lb, Eigen::Vector3d& ub);
   void visualizeBox(const Eigen::Vector3d& lb, const Eigen::Vector3d& ub);
   void calcFovAABB(const Eigen::Matrix3d& R_wc, const Eigen::Vector3d& t_wc, Eigen::Vector3i& lb,
       Eigen::Vector3i& ub);
@@ -188,7 +188,7 @@ private:
   pcl::KdTreeFLANN<pcl::PointXYZ> ft_kdtree_;
 
   shared_ptr<SDFMap> sdf_map_;
-  vector<unique_ptr<RayCaster>> casters_;
+  std::vector<unique_ptr<RayCaster>> casters_;
 
   // normals of camera FoV seperating hyperplane
   Eigen::Vector3d n_top_, n_bottom_, n_left_, n_right_;

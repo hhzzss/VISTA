@@ -49,7 +49,7 @@ double Graph::penal(const double& diff) {
 }
 
 // template <typename VERTEX>
-void Graph::dijkstraSearch(const int& start, const int& goal, vector<YawVertex::Ptr>& path) {
+void Graph::dijkstraSearch(const int& start, const int& goal, std::vector<YawVertex::Ptr>& path) {
   YawVertex::Ptr start_v = vertice_[start];
   YawVertex::Ptr end_v = vertice_[goal];
   start_v->g_value_ = 0.0;
@@ -167,12 +167,12 @@ void HeadingPlanner::setMap(const shared_ptr<SDFMap>& map) {
   sdf_map_ = map;
 }
 
-void HeadingPlanner::searchPathOfYaw(const vector<Eigen::Vector3d>& pts, const vector<double>& yaws,
-    const double& dt, const Eigen::MatrixXd& ctrl_pts, vector<double>& path) {
+void HeadingPlanner::searchPathOfYaw(const std::vector<Eigen::Vector3d>& pts, const std::vector<double>& yaws,
+    const double& dt, const Eigen::MatrixXd& ctrl_pts, std::vector<double>& path) {
   Graph yaw_graph;
   yaw_graph.setParams(w_, max_yaw_rate_, dt);
   int gid = 0;
-  vector<YawVertex::Ptr> layer, last_layer;
+  std::vector<YawVertex::Ptr> layer, last_layer;
   Eigen::Vector3d cur_pos = pts[0];
 
   for (int i = 0; i < yaws.size(); ++i) {
@@ -186,7 +186,7 @@ void HeadingPlanner::searchPathOfYaw(const vector<Eigen::Vector3d>& pts, const v
     } else {  // inter vertice
       initCastFlag(pts[i]);
       int vert_num = 2 * half_vert_num_ + 1;
-      vector<future<double>> futs(vert_num);
+      std::vector<future<double>> futs(vert_num);
       for (int j = 0; j < vert_num; ++j) {  // evaluate info gain in parallel
         double ys = yaws[i] + double(j - half_vert_num_) * yaw_diff_;
         futs[j] = std::async(std::launch::async, &HeadingPlanner::calcInformationGain, this, pts[i],
@@ -221,7 +221,7 @@ void HeadingPlanner::searchPathOfYaw(const vector<Eigen::Vector3d>& pts, const v
     last_layer.swap(layer);
   }
   auto t1 = ros::Time::now();
-  vector<YawVertex::Ptr> vert_path;
+  std::vector<YawVertex::Ptr> vert_path;
   yaw_graph.dijkstraSearch(0, gid - 1, vert_path);
 
   std::cout << "Gains of " << vert_path.size() << " vertice: ";
@@ -247,7 +247,7 @@ double HeadingPlanner::calcInformationGain(const Eigen::Vector3d& pt, const doub
   Eigen::Vector3d t_wc = T_wc.block(0, 3, 3, 1);
 
   // rotate camera seperating plane normals
-  vector<Eigen::Vector3d> normals = { n_top_, n_bottom_, n_left_, n_right_ };
+  std::vector<Eigen::Vector3d> normals = { n_top_, n_bottom_, n_left_, n_right_ };
   for (auto& n : normals) n = R_wc * n;
   Eigen::Vector3i lbi, ubi;
   calcFovAABB(R_wc, t_wc, lbi, ubi);
@@ -259,7 +259,7 @@ double HeadingPlanner::calcInformationGain(const Eigen::Vector3d& pt, const doub
   sdf_map_->getRegion(origin, size);
   Eigen::Vector3d offset = Eigen::Vector3d(0.5, 0.5, 0.5) - origin / resolution;
   pcl::PointCloud<pcl::PointXYZ> gain_pts;
-  pair<double, double> dist12;
+  std::pair<double, double> dist12;
   const int factor = 4;
   double gain = 0;
 
@@ -334,7 +334,7 @@ double HeadingPlanner::calcInfoGain(
   Eigen::Vector3d t_wc = T_wc.block(0, 3, 3, 1);
 
   // rotate camera seperating plane normals
-  vector<Eigen::Vector3d> normals = { n_top_, n_bottom_, n_left_, n_right_ };
+  std::vector<Eigen::Vector3d> normals = { n_top_, n_bottom_, n_left_, n_right_ };
   for (auto& n : normals) n = R_wc * n;
   Eigen::Vector3i lbi, ubi;
   calcFovAABB(R_wc, t_wc, lbi, ubi);
@@ -346,7 +346,7 @@ double HeadingPlanner::calcInfoGain(
   sdf_map_->getRegion(origin, size);
   Eigen::Vector3d offset = Eigen::Vector3d(0.5, 0.5, 0.5) - origin / resolution;
   pcl::PointCloud<pcl::PointXYZ> gain_pts;
-  pair<double, double> dist12;
+  std::pair<double, double> dist12;
   const int factor = 4;
   double gain = 0;
 
@@ -399,7 +399,7 @@ void HeadingPlanner::initCastFlag(const Eigen::Vector3d& pos) {
 void HeadingPlanner::calcFovAABB(const Eigen::Matrix3d& R_wc, const Eigen::Vector3d& t_wc,
     Eigen::Vector3i& lb, Eigen::Vector3i& ub) {
   // axis-aligned bounding box(AABB) of camera FoV
-  vector<Eigen::Vector3d> vertice(5);
+  std::vector<Eigen::Vector3d> vertice(5);
   vertice[0] = R_wc * lefttop_ + t_wc;
   vertice[1] = R_wc * leftbottom_ + t_wc;
   vertice[2] = R_wc * righttop_ + t_wc;
@@ -448,7 +448,7 @@ void HeadingPlanner::visualizeBox(const Eigen::Vector3d& lb, const Eigen::Vector
 }
 
 void HeadingPlanner::distToPathAndCurPos(const Eigen::Vector3d& check_pt,
-    const Eigen::MatrixXd& ctrl_pts, pair<double, double>& dists, bool debug) {
+    const Eigen::MatrixXd& ctrl_pts, std::pair<double, double>& dists, bool debug) {
   double min_squ = numeric_limits<double>::max();
   int idx = -1;
   for (int i = 0; i < ctrl_pts.rows(); ++i) {
@@ -470,7 +470,7 @@ void HeadingPlanner::distToPathAndCurPos(const Eigen::Vector3d& check_pt,
 }
 
 bool HeadingPlanner::insideFoV(
-    const Eigen::Vector3d& pw, const Eigen::Vector3d& pc, const vector<Eigen::Vector3d>& normals) {
+    const Eigen::Vector3d& pw, const Eigen::Vector3d& pc, const std::vector<Eigen::Vector3d>& normals) {
   Eigen::Vector3d dir = pw - pc;
   if (dir.norm() > far_) {
     return false;
@@ -483,7 +483,7 @@ bool HeadingPlanner::insideFoV(
   return true;
 }
 
-void HeadingPlanner::setFrontier(const vector<vector<Eigen::Vector3d>>& frontier) {
+void HeadingPlanner::setFrontier(const std::vector<std::vector<Eigen::Vector3d>>& frontier) {
   pcl::PointCloud<pcl::PointXYZ>::Ptr raw_input(new pcl::PointCloud<pcl::PointXYZ>);
   frontier_.reset(new pcl::PointCloud<pcl::PointXYZ>);
 
@@ -557,7 +557,7 @@ void HeadingPlanner::calcVisibFrontier(
   // std::endl; std::cout << "visib size: " << visib_pts.points.size() << std::endl;
 }
 
-void HeadingPlanner::showVisibFrontier(const vector<YawVertex::Ptr>& path) {
+void HeadingPlanner::showVisibFrontier(const std::vector<YawVertex::Ptr>& path) {
   // for (auto v : path) {
   //   std::cout << v->yaw_ << std::endl;
   // }
@@ -591,7 +591,7 @@ void HeadingPlanner::showVisibFrontier(const vector<YawVertex::Ptr>& path) {
 }
 
 void HeadingPlanner::axisAlignedBoundingBox(
-    const vector<Eigen::Vector3d>& points, Eigen::Vector3d& lb, Eigen::Vector3d& ub) {
+    const std::vector<Eigen::Vector3d>& points, Eigen::Vector3d& lb, Eigen::Vector3d& ub) {
   lb = points.front();
   ub = points.front();
   for (auto p : points) {

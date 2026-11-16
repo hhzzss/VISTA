@@ -1,45 +1,38 @@
-# VISTA 窗口配置说明
+# 基于局部 ESDF 滑动窗口的 B 样条轨迹优化及无人机自主搜索研究：配置说明
 
-以下值来自当前源码和 `exploration_manager/launch/single_drone_planner.xml`，核对日期为 2026-11-16。完整实现边界与问题见[相对 RACER 的改动](../docs/RACER_CHANGES.md)。
+以下对应第二版 `exploration_manager/launch/single_drone_planner.xml` 和实际 C++ 参数读取。
 
-## 参数与实际默认值
-
-| 参数 | C++ 读取默认值 | 当前单机 planner 配置 | 作用 |
+| 参数 | C++ 缺省值 | 当前单机 XML | 含义 |
 | --- | --- | --- | --- |
-| `sdf_map/use_local_window` | `false` | `true` | 切换 ESDF 更新范围与梯度查询窗口判断 |
-| `sdf_map/local_window_x` | `10.0` | `10.0` | X 全尺寸，米 |
-| `sdf_map/local_window_y` | `10.0` | `10.0` | Y 全尺寸，米 |
-| `sdf_map/local_window_z` | `5.0` | `5.0` | Z 全尺寸，米；会裁剪到地图边界 |
-| `manager/use_dynamic_sliding_window` | `false` | `true` | 允许 `paramLocalTraj()` 选择椭球采样 |
-| `manager/sliding_window_minor_ratio` | `0.6` | `0.6` | 短半轴 / 长半轴 |
-| `manager/local_segment_length` | `-1.0` | `6.0` | 局部轨迹采样长半轴来源，米 |
-| `sdf_map/default_dist` | `5.0` | `0.5` | 窗口外或地图外梯度查询返回值，米 |
+| `sdf_map/use_local_window` | false | true | 使用新增 ESDF 更新范围 |
+| `sdf_map/local_window_x` | 10.0 | 10.0 | 完整窗口 X 尺寸，米 |
+| `sdf_map/local_window_y` | 10.0 | 10.0 | 完整窗口 Y 尺寸，米 |
+| `sdf_map/local_window_z` | 5.0 | 5.0 | 完整窗口 Z 尺寸，米 |
+| `sdf_map/default_dist` | 5.0 | 0.5 | 默认距离值，不代表真实净空 |
+| `manager/use_dynamic_sliding_window` | false | true | 允许方向椭球采样分支 |
+| `manager/sliding_window_minor_ratio` | 0.6 | 0.6 | 短半轴/长半轴 |
+| `manager/local_segment_length` | 见规划参数读取 | 6.0 | 椭球分支长半轴，米 |
+| `manager/use_topo_path` | 见规划参数读取 | false | 原拓扑规划路径开关 |
 
-前四项对应地图更新范围，后两项方向机制参数对应轨迹采样范围。两者不是同一个几何窗口。默认椭球半轴为 `6.0 / 3.6 / 3.6 m`；ESDF 窗口半尺寸为 `5.0 / 5.0 / 2.5 m`，且 Z 范围会进一步裁剪。二者没有包含关系保证。
+这些参数是探索节点的私有参数，不是同名 launch `<arg>`。调整时编辑该节点参数或通过正确节点命名空间加载；不能未经声明直接在 roslaunch 命令后加同名参数。
 
-## 修改位置
+## 窗口与可视化
 
-参数定义在[单机 planner XML](exploration_manager/launch/single_drone_planner.xml)，位于 `exploration_node_$(arg drone_id)` 节点内，其实际参数名带节点私有命名空间，例如 `/exploration_node_1/sdf_map/use_local_window`。
+地图窗口是轴对齐长方体，中心在 `planExploreMotion()` 开头更新，地图边缘会裁剪尺寸。它没有按目标旋转，也未替换完整地图缓冲区。
 
-当前上层 launch 没有把这些参数暴露为命令行 `arg`；不能直接在 `roslaunch ...` 后附加 `use_local_window:=false` 并假定生效。短期可复制 planner 配置及其引用关系后修改，正式实验应补充可追溯的配置入口，并使用 `rosparam get` 核验实际值：
+- `/sdf_map/local_window`：窗口 Cube。
+- `/planning_vis/sliding_window_dir`：当前位置指向下一视点的 Arrow。
 
-```bash
-rosparam get /exploration_node_1/sdf_map/use_local_window
-rosparam get /exploration_node_1/sdf_map/local_window_x
-rosparam get /exploration_node_1/manager/use_dynamic_sliding_window
-```
+当前发布的方向 Marker 不是椭球实体或采样点云。只有进入 `paramLocalTraj()` 中的椭球分支才能认为该采样函数被调用；默认探索调用路径的缺口见[改动说明](../docs/RACER_CHANGES.md)。
 
-关闭两个开关可用于局部行为诊断，但当前代码还包含边界返回值和单机回退等改动，因此不等于精确原版 RACER 基线。
+## 新模块参数
 
-## 可视化
+`PointCloudCluster::init()` 读取 `pointcloud_cluster/cluster_tolerance=0.5`、`min_cluster_size=50`、`max_cluster_size=10000`、`feature_radius=0.5`、`merge_threshold=1.0`。读取参数不代表它们全部影响现有处理链路；例如 FPFH 提取尚无实现。
 
-| 话题 | 类型 | 含义 |
-| --- | --- | --- |
-| `/sdf_map/local_window` | `visualization_msgs/Marker` Cube | 实际裁剪后的轴对齐更新窗口 |
-| `/planning_vis/sliding_window_dir` | `visualization_msgs/Marker` Arrow | 当前位置指向下一视点的连线 |
+`EOHDTSolver::init()` 读取 `eohdt/alpha=1.0`、`beta=0.5`、`gamma=0.3`、`max_edge_length=10.0`、`max_iterations=100`。这些类尚无默认 manager 调用，不能认为加入参数即可替换 ATSP。
 
-箭头可见不能证明默认探索任务使用了椭球采样。当前没有新增显示完整椭球边界或采样点集的发布器。上述两个话题为绝对路径，多机同时发布时还需处理命名空间和 Marker 身份冲突。
+`PointCloudCollision::init()` 读取 `pointcloud_collision/safety_radius=0.3`、`max_check_distance=5.0`，没有读取 `enabled`。它也尚未接入默认距离代价。
 
-## 已知边界
+## 消融配置边界
 
-局部更新不改变全图缓冲区分配规模；原 RACER 已有局部包围盒更新。窗口仅在 `planExploreMotion()` 更新中心，ESDF 仍由原 0.05 秒定时器在需要更新时计算。方向分支的默认链路接入及未初始化全局轨迹状态需先修复。当前没有经过验证的性能提升百分比。
+关闭两个新增开关只能用作诊断，不能视为精确 RACER 基线：窗口外/地图外查询语义、容器兼容改动等仍在。正式 G0 应从保留的 RACER 提交构建，G1/G2 的差异需单独冻结并记录。当前未提供一键完成全部消融和 45 次正式实验的脚本。

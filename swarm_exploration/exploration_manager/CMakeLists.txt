@@ -64,6 +64,7 @@ add_executable(exploration_node
   src/exploration_node.cpp 
   src/fast_exploration_fsm.cpp
   src/fast_exploration_manager.cpp
+  src/eohdt_solver.cpp
   )
 target_link_libraries(exploration_node 
   ${catkin_LIBRARIES}
@@ -72,6 +73,7 @@ target_link_libraries(exploration_node
 add_executable(ground_node
   src/ground_node.cpp 
   src/fast_exploration_manager.cpp
+  src/eohdt_solver.cpp
   )
 target_link_libraries(ground_node
   ${catkin_LIBRARIES}

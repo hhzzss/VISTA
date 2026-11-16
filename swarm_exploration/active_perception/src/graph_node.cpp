@@ -23,13 +23,13 @@ ViewNode::ViewNode(const Vector3d& p, const double& y) {
 }
 
 double ViewNode::costTo(const ViewNode::Ptr& node) {
-  vector<Vector3d> path;
+  std::vector<Vector3d> path;
   double c = ViewNode::computeCost(pos_, node->pos_, yaw_, node->yaw_, vel_, yaw_dot_, path);
   // std::cout << "cost from " << id_ << " to " << node->id_ << " is: " << c << std::endl;
   return c;
 }
 
-double ViewNode::searchPath(const Vector3d& p1, const Vector3d& p2, vector<Vector3d>& path) {
+double ViewNode::searchPath(const Vector3d& p1, const Vector3d& p2, std::vector<Vector3d>& path) {
   // Try connect two points with straight line
   bool safe = true;
   Vector3i idx;
@@ -46,7 +46,7 @@ double ViewNode::searchPath(const Vector3d& p1, const Vector3d& p2, vector<Vecto
     return (p1 - p2).norm();
   }
   // Search a path using decreasing resolution
-  vector<double> res = { 0.4 };
+  std::vector<double> res = { 0.4 };
   for (int k = 0; k < res.size(); ++k) {
     astar_->reset();
     astar_->setResolution(res[k]);
@@ -61,7 +61,7 @@ double ViewNode::searchPath(const Vector3d& p1, const Vector3d& p2, vector<Vecto
 }
 
 double ViewNode::computeCost(const Vector3d& p1, const Vector3d& p2, const double& y1,
-    const double& y2, const Vector3d& v1, const double& yd1, vector<Vector3d>& path) {
+    const double& y2, const Vector3d& v1, const double& yd1, std::vector<Vector3d>& path) {
   // Cost of position change
   double pos_cost = ViewNode::searchPath(p1, p2, path) / vm_;
 

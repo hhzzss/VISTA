@@ -41,9 +41,9 @@ public:
   ~VisibilityUtil();
   void setEDTEnvironment(const EDTEnvironment::Ptr& edt);
 
-  vector<Eigen::Vector3d> precomputeForVisibility(
-      const vector<Eigen::Vector3d>& ctrl_pts, bool debug = false);
-  void findVisibPairs(const vector<Eigen::Vector3d>& pts, vector<VisiblePair>& pairs);
+  std::vector<Eigen::Vector3d> precomputeForVisibility(
+      const std::vector<Eigen::Vector3d>& ctrl_pts, bool debug = false);
+  void findVisibPairs(const std::vector<Eigen::Vector3d>& pts, std::vector<VisiblePair>& pairs);
   void calcViewConstraint(NonUniformBspline& traj, ViewConstraint& cons);
 
 private:
@@ -52,7 +52,7 @@ private:
   Eigen::Vector3d getMinDistVoxelOnLine(const Eigen::Vector3d& q1, const Eigen::Vector3d& q2,
       const Eigen::Vector3d& offset, const double& res, int& state, Eigen::Vector3d& block);
   Eigen::Vector3d getVirtualBlockPt(
-      const vector<Eigen::Vector3d>& q, int i, int j, const Eigen::Vector3d& min_pt);
+      const std::vector<Eigen::Vector3d>& q, int i, int j, const Eigen::Vector3d& min_pt);
   bool lineVisib(const Eigen::Vector3d& p1, const Eigen::Vector3d& p2, Eigen::Vector3d& pc);
   bool findUnknownPoint(NonUniformBspline& traj, Eigen::Vector3d& point, double& time);
   bool findCriticalPoint(NonUniformBspline& traj, const Eigen::Vector3d& unknown_pt,

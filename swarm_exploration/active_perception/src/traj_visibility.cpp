@@ -120,7 +120,7 @@ bool VisibilityUtil::lineVisib(
 }
 
 void VisibilityUtil::findVisibPairs(
-    const vector<Eigen::Vector3d>& pts, vector<VisiblePair>& pairs) {
+    const std::vector<Eigen::Vector3d>& pts, std::vector<VisiblePair>& pairs) {
   int know_num = 0;
   pairs.clear();
   int cur_j, prev_j = -1;
@@ -311,10 +311,10 @@ void VisibilityUtil::calcViewConstraint(NonUniformBspline& traj, ViewConstraint&
 
 /* precompute the blocking points of the trajectory which will be used for
  * evaluating the visibility cost */
-vector<Eigen::Vector3d> VisibilityUtil::precomputeForVisibility(
-    const vector<Eigen::Vector3d>& ctrl_pts, bool debug) {
+std::vector<Eigen::Vector3d> VisibilityUtil::precomputeForVisibility(
+    const std::vector<Eigen::Vector3d>& ctrl_pts, bool debug) {
   int n = ctrl_pts.size() - visible_num_;
-  vector<Eigen::Vector3d> block_pts(n);
+  std::vector<Eigen::Vector3d> block_pts(n);
   int unknwon_num = 0;
   double res = edt_env_->sdf_map_->getResolution();
   Eigen::Vector3d origin, size;
@@ -388,7 +388,7 @@ vector<Eigen::Vector3d> VisibilityUtil::precomputeForVisibility(
 }
 
 Eigen::Vector3d VisibilityUtil::getVirtualBlockPt(
-    const vector<Eigen::Vector3d>& q, int i, int j, const Eigen::Vector3d& min_pt) {
+    const std::vector<Eigen::Vector3d>& q, int i, int j, const Eigen::Vector3d& min_pt) {
   Eigen::Vector3d qij = q[j] - q[i];
   Eigen::Vector3d qkm, qk;
   double min_dot = 1000;

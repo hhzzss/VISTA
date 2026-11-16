@@ -105,7 +105,7 @@ void UniformGrid::updateBaseCoor() {
     right_bottom[2] = left_bottom[2];
     right_top[2] = left_bottom[2];
 
-    vector<Eigen::Vector3d> vertices = { left_bottom, right_bottom, right_top, left_top };
+    std::vector<Eigen::Vector3d> vertices = { left_bottom, right_bottom, right_top, left_top };
     if (use_swarm_tf_) {
       for (auto& vert : vertices) vert = rot_sw_ * vert + trans_sw_;
     }
@@ -139,8 +139,8 @@ void UniformGrid::updateBaseCoor() {
   }
 }
 
-void UniformGrid::updateGridData(const int& drone_id, vector<int>& grid_ids, vector<int>& parti_ids,
-    vector<int>& parti_ids_all) {
+void UniformGrid::updateGridData(const int& drone_id, std::vector<int>& grid_ids, std::vector<int>& parti_ids,
+    std::vector<int>& parti_ids_all) {
 
   // parti_ids are ids of grids that are assigned to THIS drone and should be divided
   // parti_ids_all are ids of ALL grids that should be divided
@@ -154,11 +154,11 @@ void UniformGrid::updateGridData(const int& drone_id, vector<int>& grid_ids, vec
   Vector3d update_min, update_max;
   edt_->sdf_map_->getUpdatedBox(update_min, update_max, reset);
 
-  vector<Eigen::Vector3d> update_mins, update_maxs;
+  std::vector<Eigen::Vector3d> update_mins, update_maxs;
   edt_->sdf_map_->mm_->getChunkBoxes(update_mins, update_maxs, reset);
 
   // Rediscovered grid
-  vector<int> rediscovered_ids;
+  std::vector<int> rediscovered_ids;
 
   auto have_overlap = [](
       const Vector3d& min1, const Vector3d& max1, const Vector3d& min2, const Vector3d& max2) {
@@ -336,7 +336,7 @@ void UniformGrid::indexToPos(const Eigen::Vector3i& id, const double& inc, Eigen
   for (int i = 0; i < 3; ++i) pos(i) = (id(i) + inc) * resolution_[i] + min_(i);
 }
 
-void UniformGrid::activateGrids(const vector<int>& ids) {
+void UniformGrid::activateGrids(const std::vector<int>& ids) {
   for (auto id : ids) {
     grid_data_[id].active_ = true;
   }
@@ -353,7 +353,7 @@ bool UniformGrid::insideGrid(const Eigen::Vector3i& id) {
   return true;
 }
 
-void UniformGrid::inputFrontiers(const vector<Eigen::Vector3d>& avgs) {
+void UniformGrid::inputFrontiers(const std::vector<Eigen::Vector3d>& avgs) {
   for (auto& grid : grid_data_) {
     grid.contained_frontier_ids_.clear();
   }
@@ -379,19 +379,19 @@ bool UniformGrid::isRelevant(const GridInfo& grid) {
   return grid.unknown_num_ >= min_unknown_ || !grid.contained_frontier_ids_.empty();
 }
 
-void UniformGrid::getCostMatrix(const vector<Eigen::Vector3d>& positions,
-    const vector<Eigen::Vector3d>& velocities, const vector<int>& prev_first_grid,
-    const vector<int>& grid_ids, Eigen::MatrixXd& mat) {
+void UniformGrid::getCostMatrix(const std::vector<Eigen::Vector3d>& positions,
+    const std::vector<Eigen::Vector3d>& velocities, const std::vector<int>& prev_first_grid,
+    const std::vector<int>& grid_ids, Eigen::MatrixXd& mat) {
 }
 
-void UniformGrid::getGridTour(const vector<int>& ids, vector<Eigen::Vector3d>& tour) {
+void UniformGrid::getGridTour(const std::vector<int>& ids, std::vector<Eigen::Vector3d>& tour) {
   tour.clear();
   for (int i = 0; i < ids.size(); ++i) {
     tour.push_back(grid_data_[ids[i]].center_);
   }
 }
 
-void UniformGrid::getFrontiersInGrid(const int& grid_id, vector<int>& ftr_ids) {
+void UniformGrid::getFrontiersInGrid(const int& grid_id, std::vector<int>& ftr_ids) {
   // Find frontier having more than 1/4 within the first grid
   auto& first_grid = grid_data_[grid_id];
   ftr_ids.clear();
@@ -403,7 +403,7 @@ void UniformGrid::getFrontiersInGrid(const int& grid_id, vector<int>& ftr_ids) {
   }
 }
 
-void UniformGrid::getGridMarker(vector<Eigen::Vector3d>& pts1, vector<Eigen::Vector3d>& pts2) {
+void UniformGrid::getGridMarker(std::vector<Eigen::Vector3d>& pts1, std::vector<Eigen::Vector3d>& pts2) {
 
   Eigen::Vector3d p1 = min_;
   Eigen::Vector3d p2 = min_ + Eigen::Vector3d(max_[0] - min_[0], 0, 0);

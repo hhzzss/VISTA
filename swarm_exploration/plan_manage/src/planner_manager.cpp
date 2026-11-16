@@ -193,13 +193,11 @@ bool FastPlannerManager::kinodynamicReplan(const Eigen::Vector3d& start_pt,
   bspline_optimizers_[0]->setBoundaryStates(start, end);
   if (time_lb > 0) bspline_optimizers_[0]->setTimeLowerBound(time_lb);
 
-  // Swarm collision avoidance (auto-enable for multi-drone)
+  // Swarm collision avoidance term
+  cost_function |= BsplineOptimizer::SWARM;
   vector<NonUniformBspline> trajs;
   swarm_traj_data_.getValidTrajs(trajs);
-  if (!trajs.empty()) {
-    cost_function |= BsplineOptimizer::SWARM;
-    bspline_optimizers_[0]->setSwarmTrajs(trajs);
-  }
+  bspline_optimizers_[0]->setSwarmTrajs(trajs);
 
   bspline_optimizers_[0]->optimize(ctrl_pts, ts, cost_function, 1, 1);
   local_data_.position_traj_.setUniformBspline(ctrl_pts, pp_.bspline_degree_, ts);
@@ -267,13 +265,11 @@ void FastPlannerManager::planExploreTraj(const vector<Eigen::Vector3d>& tour,
   bspline_optimizers_[0]->setBoundaryStates(start, end);
   if (time_lb > 0) bspline_optimizers_[0]->setTimeLowerBound(time_lb);
 
-  // Swarm collision avoidance (auto-enable for multi-drone)
+  // Swarm collision avoidance term
+  cost_func |= BsplineOptimizer::SWARM;
   vector<NonUniformBspline> trajs;
   swarm_traj_data_.getValidTrajs(trajs);
-  if (!trajs.empty()) {
-    cost_func |= BsplineOptimizer::SWARM;
-    bspline_optimizers_[0]->setSwarmTrajs(trajs);
-  }
+  bspline_optimizers_[0]->setSwarmTrajs(trajs);
 
   bspline_optimizers_[0]->optimize(ctrl_pts, dt, cost_func, 1, 1);
   local_data_.position_traj_.setUniformBspline(ctrl_pts, pp_.bspline_degree_, dt);
@@ -924,12 +920,6 @@ bool FastPlannerManager::checkSwarmCollision(const int& id) {
 // ===== Dynamic Sliding Window Implementation =====
 void FastPlannerManager::setSlidingWindowTarget(const Eigen::Vector3d& target_pos) {
   if (!pp_.use_dynamic_sliding_window_) return;
-
-  // Check if global trajectory is initialized
-  if (global_data_.global_duration_ <= 0) {
-    ROS_WARN("[PlannerManager] Cannot set sliding window: no global traj");
-    return;
-  }
 
   // Compute direction from current position to target
   double t_now = (ros::Time::now() - global_data_.global_start_time_).toSec();

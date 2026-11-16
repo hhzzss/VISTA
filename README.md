@@ -1,79 +1,54 @@
-# VISTA
+# 基于局部 ESDF 滑动窗口的 B 样条轨迹优化及无人机自主搜索研究
 
-基于 [RACER](https://github.com/hhzzss/RACER) 的无人机自主探索研究工程，围绕**局部 ESDF 更新范围**与**目标方向引导的局部轨迹采样**开展改进与验证。当前研究对象是单架无人机；仓库保留 RACER 的多机框架，但不宣称新增了多机协同算法。
+基于 [RACER](https://github.com/hhzzss/RACER) 的无人机自主探索研究工程。研究重点是局部 ESDF 更新范围、目标方向引导的轨迹截取，以及既有 B 样条优化与自主探索流程之间的接口。
 
-**当前状态：研究原型。** 已有窗口接口、计算范围切换、椭球采样函数、可视化和单机适配代码；方向采样与默认探索主链路仍存在接入缺口，并发现全局引导轨迹状态初始化问题。当前版本不应作为已完成性能验证或可实飞版本使用。详见[实现对照与问题清单](docs/RACER_CHANGES.md)及[验证记录](docs/VALIDATION.md)。
+**当前版本：第二版。** 2026-11-16 按用户指定的 `E:/VISTA` 完整替换源码树、配置、仿真资源和脚本；第一版不再作为当前实现依据。用户反馈第二版运行效果优于第一版，目前没有随版本提供可复算的定量对照数据。
 
-## 阅读导航
+项目展示名称使用上面的完整中文题名。`VISTA` 仅保留为 GitHub 仓库名和克隆目录标识；ROS 包名及节点接口沿用源码。它不是上游 RACER 论文的名称，也不将上游作者和获奖信息归为本课题成果。
+
+## 内容导航
 
 | 文档 | 内容 |
 | --- | --- |
-| [项目结构](docs/PROJECT_STRUCTURE.md) | 文件夹用途、25 个有效 ROS 包、关键入口及数据流 |
-| [相对 RACER 的改动](docs/RACER_CHANGES.md) | 逐项代码证据、实现边界、与开题报告的对应关系 |
-| [运行与复现](docs/REPRODUCIBILITY.md) | 环境依赖、单机启动、配置方法与实验准备 |
-| [验证记录](docs/VALIDATION.md) | 本次实际执行的检查、结果及尚未完成的验证 |
-| [配置速查](swarm_exploration/config_changes.md) | 窗口参数、默认值与修改位置 |
-| [后续交接](HANDOVER.md) | 继续研究时的优先工作 |
-| [来源说明](THIRD_PARTY.md) | 上游提交、原论文与第三方内容 |
+| [项目结构](docs/PROJECT_STRUCTURE.md) | 全目录与各 ROS 包职责、建议阅读顺序 |
+| [相对 RACER 的改动](docs/RACER_CHANGES.md) | 地图窗口、椭球采样、新模块、实际接入状态 |
+| [第二版替换说明](docs/VERSION_2.md) | 与此前发布版本的区别、完整同步规则 |
+| [构建与运行](docs/REPRODUCIBILITY.md) | ROS 依赖、原始入口、当前运行限制 |
+| [核验记录](docs/VALIDATION.md) | 本版本检查结果与未覆盖范围 |
+| [配置说明](swarm_exploration/config_changes.md) | 真实参数、默认值和可视化 |
+| [新增模块状态](swarm_exploration/PHASE2_SUMMARY.md) | 聚类、EOHDT、点云碰撞检测 |
+| [交接说明](HANDOVER.md) | 当前版本边界与后续研究衔接 |
+| [来源与第三方说明](THIRD_PARTY.md) | RACER 基线、继承组件及原始说明 |
 
-## 当前改动
+## 当前实现
 
-1. **局部 ESDF 更新窗口。** 增加 `use_local_window`、窗口尺寸与中心更新接口。启用时，距离变换使用跟随当前位置的轴对齐窗口边界；关闭时使用原有的局部更新包围盒。地图缓冲区仍按完整地图尺寸分配。
-2. **方向引导的椭球轨迹采样。** 增加长半轴指向目标、短半轴比例可配置的采样方法，并在 `paramLocalTraj()` 中选择球形或椭球形区域。该分支属于已有全局/拓扑轨迹处理链路，尚未接入默认的探索轨迹生成路径。
-3. **单机适配与诊断。** 增加无网格分配时的前沿目标回退、空邻机轨迹时不启用 SWARM 代价的处理，以及局部窗口和目标方向 Marker。
-4. **发布整理。** 更正 RACER 论文引用和项目归属，补充中文解释文档，去掉启动脚本中的机器专属路径及全局杀进程命令，并停止跟踪历史编译产物。
+- **局部 ESDF 更新窗口**：在原有地图融合框架上增加可配置的、跟随探索规划位置的轴对齐计算范围。完整地图缓冲区仍保留。
+- **目标方向椭球轨迹截取原型**：增加目标和方向接口、椭球内轨迹采样及球形回退分支。默认探索链路尚不能据此认定已经使用椭球采样。
+- **B 样条优化接口**：沿用 RACER 的样条表示、主要代价与求解方法，距离代价通过地图查询接口受到局部窗口语义影响。
+- **可视化与配置**：局部地图窗口 Cube、目标方向 Arrow、单机 launch 参数及 RViz 配置。
+- **第二版新增源文件**：点云聚类/拓扑图、EOHDT 分层求解、KD-tree 点云碰撞检测。源码已经收录，但默认规划调用尚未接通；点云聚类源文件未加入其 CMake 目标。
 
-**贡献边界：** `bspline/` 与 `bspline_opt/` 的样条表示、主要目标函数及优化器继承自 RACER；本版本没有实现新的 B 样条求解算法、EOHDT 或 ESDF-free 避障。仓库中没有可支持内存、耗时或探索效率提升百分比的正式实验结果。
+第二版保留了自身的算法和脚本行为，没有从第一版拼回前沿回退、SWARM 条件开关或全局轨迹时长保护。详见[版本差异](docs/VERSION_2.md)。
 
-## 构建入口
+## 构建与运行入口
 
-原 RACER README 提供 Ubuntu 18.04 / ROS Melodic 与 Ubuntu 20.04 / ROS Noetic 的使用说明；这不代表 VISTA 已在两套环境中重新通过验证。优先使用 Ubuntu 20.04 / ROS Noetic，并先阅读[本次检查结果](docs/VALIDATION.md)。
-
-项目是由多个 catkin 包组成的源码集合，放在工作空间的 `src/VISTA` 下：
+使用 Linux + ROS Noetic/catkin。构建前检查 NLopt、PCL、Eigen、OpenCV、Armadillo 和外部 LKH，具体路径要求见[复现说明](docs/REPRODUCIBILITY.md)。
 
 ```bash
-mkdir -p ~/vista_ws/src
-cd ~/vista_ws/src
+mkdir -p ~/catkin_ws/src
+cd ~/catkin_ws/src
 git clone https://github.com/hhzzss/VISTA.git
-cd ~/vista_ws
+cd ..
 source /opt/ros/noetic/setup.bash
-# 先按 docs/REPRODUCIBILITY.md 安装并检查依赖
-catkin_make -j2
-source devel/setup.bash
+catkin_make
 ```
 
-## 单机仿真入口
+上述为构建步骤，不表示本版本已经完成整工程构建或闭环验收。依赖和已知代码限制以[核验记录](docs/VALIDATION.md)为准。
 
-在正确构建和 source 工作空间后：
+原有单机入口是 `roslaunch exploration_manager single_drone_exploration.xml simulation:=true`，RViz 入口是 `roslaunch exploration_manager rviz.launch`。单机入口并不自行发布全局地图，需配套地图节点；新带地图 XML 当前只有节点片段，不能直接作为完整启动入口。源码附带的两个 `test_*.sh` 含固定工作空间或全局 `pkill`，本次为忠实同步第二版保留，**不建议直接执行**。`apply_phase2.sh` 同样只作原始工具保留。
 
-```bash
-roslaunch exploration_manager single_drone_exploration_with_map.xml map_name:=pillar.pcd
-```
+## 研究与证据边界
 
-该入口包含地图发布、单机规划、轻量仿真器和 RViz。用 RViz 的 `2D Nav Goal` 触发探索。`simulator_light.xml` 实际使用 `poscmd_2_odom` 与点云传感渲染，不能直接称为已完成 Gazebo 物理仿真验证。
+开题报告聚焦单无人机、局部 ESDF 与方向机制的核验、B 样条耦合和消融实验；多机框架仍由 RACER 继承。新增 Phase 2 源码不代表已经替换原 ATSP 或实现完整 ESDF-free 优化。现阶段不宣称内存降低倍数、固定毫秒加速、效率提升百分比或完整实验已经完成。
 
-可选地图：`pillar.pcd`、`office.pcd`、`office2.pcd`、`office3.pcd`。更换地图时还需核对地图尺寸、探索边界与起点，不能只替换文件名。具体命令、原多机入口和现有局限见[运行说明](docs/REPRODUCIBILITY.md)。
-
-## 研究背景
-
-对应课题为“基于局部 ESDF 滑动窗口的 B 样条轨迹优化及无人机自主搜索研究”。研究关注窗口改动怎样影响距离与梯度查询、局部规划及闭环探索。开题报告中的 G0 / G1 / G2 消融、45 次任务和数据采集方案属于后续实验计划；本仓库尚未提供完整实施结果。开题报告原件保留在本地论文资料目录，不作为本次公开代码发布的一部分。
-
-## RACER 来源与引用
-
-基线提交：`049c332e3634ef72d8beb155b4c13dc91ca52916`。2026-11-16 核对时，本地基线、`hhzzss/RACER` 与上游 `Robotics-STAR-Lab/RACER` 的 `main` 指向同一提交。原项目 README 原文保存在 [docs/upstream/README.RACER.md](docs/upstream/README.RACER.md)。
-
-引用 RACER 时请保留原论文题名与作者，不能把 RACER 的论文、演示或获奖信息改署为 VISTA：
-
-```bibtex
-@article{zhou2023racer,
-  title={RACER: Rapid Collaborative Exploration With a Decentralized Multi-UAV System},
-  author={Zhou, Boyu and Xu, Hao and Shen, Shaojie},
-  journal={IEEE Transactions on Robotics},
-  year={2023},
-  volume={39},
-  number={3},
-  pages={1816--1835}
-}
-```
-
-[原论文](https://arxiv.org/abs/2209.08533)及[上游仓库](https://github.com/Robotics-STAR-Lab/RACER)。第三方说明见 [THIRD_PARTY.md](THIRD_PARTY.md)。
+上游演示资源、论文和作者信息见[第三方说明](THIRD_PARTY.md)，不作为第二版改进实验的证据。

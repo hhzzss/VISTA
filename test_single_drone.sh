@@ -1,11 +1,33 @@
-#!/usr/bin/env bash
-# 单机入口；调用前先 source ROS 和已编译的工作空间。
-set -e
+#!/bin/bash
+# 单机仿真测试脚本
 
-if ! command -v roslaunch >/dev/null 2>&1; then
-  echo "未找到 roslaunch，请先 source ROS 和工作空间的 setup.bash。" >&2
-  exit 1
-fi
+cd ~/catkin_ws
+source devel/setup.bash
 
-echo "启动地图、单机轻量仿真及 RViz；使用 2D Nav Goal 触发探索。"
-exec roslaunch exploration_manager single_drone_exploration_with_map.xml "$@"
+echo "=== 启动单机仿真测试 ==="
+echo "步骤1: 启动仿真器 (地图 + 里程计)..."
+echo "步骤2: 启动探索节点..."
+echo "步骤3: 请在RViz中点击 '2D Nav Goal' 触发探索"
+echo ""
+
+# 杀死已有的ROS进程
+pkill -f "rosrun\|roslaunch" 2>/dev/null
+sleep 2
+
+# 启动roscore
+roscore &
+sleep 3
+
+# 启动单机探索节点 (包含内置仿真器)
+echo "[1/2] 启动单机仿真 (包含地图和里程计)..."
+roslaunch /home/hh/VISTA/swarm_exploration/exploration_manager/launch/single_drone_exploration.xml drone_id:=1 simulation:=true &
+sleep 5
+
+# 启动RViz
+echo "[2/2] 启动RViz..."
+echo "请在RViz中点击 '2D Nav Goal' (快捷键G) 来触发探索"
+roslaunch exploration_manager rviz.launch
+
+# 清理
+echo "正在清理..."
+pkill -f "rosrun\|roslaunch" 2>/dev/null
