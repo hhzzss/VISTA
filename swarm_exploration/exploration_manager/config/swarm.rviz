@@ -89,6 +89,22 @@ Visualization Manager:
           Value: true
         - Class: rviz/Marker
           Enabled: true
+          Marker Topic: /sdf_map/local_window
+          Name: Local Window
+          Namespaces:
+            {}
+          Queue Size: 100
+          Value: true
+        - Class: rviz/Marker
+          Enabled: true
+          Marker Topic: /planning_vis/sliding_window_dir
+          Name: Sliding Window Direction
+          Namespaces:
+            {}
+          Queue Size: 100
+          Value: true
+        - Class: rviz/Marker
+          Enabled: true
           Marker Topic: /planning/travel_traj_2
           Name: executed_traj2
           Namespaces:

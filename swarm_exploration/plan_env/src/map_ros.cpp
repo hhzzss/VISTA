@@ -68,6 +68,7 @@ void MapROS::init() {
   esdf_pub_ = node_.advertise<sensor_msgs::PointCloud2>("/sdf_map/esdf", 10);
   update_range_pub_ = node_.advertise<visualization_msgs::Marker>("/sdf_map/update_range", 10);
   depth_pub_ = node_.advertise<sensor_msgs::PointCloud2>("/sdf_map/depth_cloud", 10);
+  local_window_pub_ = node_.advertise<visualization_msgs::Marker>("/sdf_map/local_window", 10);
 
   // basecoor_sub_ = node_.subscribe("/sdf_map/basecoor", 10, &MapROS::basecoorCallback, this);
 
@@ -109,6 +110,7 @@ void MapROS::visCallback(const ros::TimerEvent& e) {
   // publishESDF();
 
   publishUpdateRange();
+  publishLocalWindow();
   // publishDepth();
 }
 
@@ -531,5 +533,45 @@ void MapROS::publishESDF() {
   esdf_pub_.publish(cloud_msg);
 
   // ROS_INFO("pub esdf");
+}
+
+void MapROS::publishLocalWindow() {
+  // Only publish if local window is enabled
+  if (!map_->mp_->use_local_window_) return;
+
+  Eigen::Vector3d local_min, local_max;
+  map_->getLocalWindow(local_min, local_max);
+
+  visualization_msgs::Marker mk;
+  mk.header.frame_id = frame_id_;
+  mk.header.stamp = ros::Time::now();
+  mk.type = visualization_msgs::Marker::CUBE;
+  mk.action = visualization_msgs::Marker::ADD;
+  mk.id = 0;
+
+  // Calculate center position
+  Eigen::Vector3d center = 0.5 * (local_min + local_max);
+  mk.pose.position.x = center(0);
+  mk.pose.position.y = center(1);
+  mk.pose.position.z = center(2);
+
+  // Calculate scale
+  Eigen::Vector3d scale = local_max - local_min;
+  mk.scale.x = scale(0);
+  mk.scale.y = scale(1);
+  mk.scale.z = scale(2);
+
+  // Green transparent color
+  mk.color.a = 0.2;
+  mk.color.r = 0.0;
+  mk.color.g = 1.0;
+  mk.color.b = 0.0;
+
+  mk.pose.orientation.w = 1.0;
+  mk.pose.orientation.x = 0.0;
+  mk.pose.orientation.y = 0.0;
+  mk.pose.orientation.z = 0.0;
+
+  local_window_pub_.publish(mk);
 }
 }  // namespace fast_planner

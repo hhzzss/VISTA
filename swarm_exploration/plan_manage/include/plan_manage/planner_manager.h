@@ -43,6 +43,12 @@ public:
   void initPlanModules(ros::NodeHandle& nh);
   void setGlobalWaypoints(vector<Eigen::Vector3d>& waypoints);
 
+  // ===== Dynamic Sliding Window Interface =====
+  void setSlidingWindowTarget(const Eigen::Vector3d& target_pos);
+  void setSlidingWindowDirection(const Eigen::Vector3d& direction);
+  void disableDynamicSlidingWindow();
+  // ===========================================
+
   bool checkTrajCollision(double& distance);
   void calcNextYaw(const double& last_yaw, double& yaw);
 

@@ -110,6 +110,65 @@ public:
     dt = duration / seg_num;
     getTrajInfoInDuration(start_t, duration, dt, point_set, start_end_derivative);
   }
+
+  // ===== Dynamic Sliding Window: Get trajectory info in ellipsoid aligned with direction =====
+  void getTrajInfoInEllipsoid(const double& start_t,
+                               const Eigen::Vector3d& direction,
+                               const double& major_radius,
+                               const double& minor_radius,
+                               const double& dist_pt,
+                               vector<Eigen::Vector3d>& point_set,
+                               vector<Eigen::Vector3d>& start_end_derivative,
+                               double& dt,
+                               double& duration) {
+    if (direction.norm() < 1e-6) {
+      // Fallback to sphere if direction is invalid
+      getTrajInfoInSphere(start_t, major_radius, dist_pt, point_set, start_end_derivative, dt, duration);
+      return;
+    }
+
+    double segment_len = 0.0;
+    double segment_time = 0.0;
+    Eigen::Vector3d first_pt = getState(start_t, 0);
+    Eigen::Vector3d prev_pt = first_pt;
+    Eigen::Vector3d cur_pt = first_pt;
+
+    // Normalize direction
+    Eigen::Vector3d dir_norm = direction.normalized();
+
+    // Build rotation matrix: z-axis aligned with direction
+    Eigen::Matrix3d R;
+    R.col(2) = dir_norm;
+    // Find orthogonal vectors for x and y axes
+    Eigen::Vector3d tmp = (fabs(dir_norm.z()) < 0.9) ? Eigen::Vector3d(0, 0, 1) : Eigen::Vector3d(1, 0, 0);
+    R.col(0) = dir_norm.cross(tmp).normalized();
+    R.col(1) = R.col(2).cross(R.col(0));
+
+    const double delta_t = 0.2;
+    while (start_t + segment_time < global_duration_ - 1e-3) {
+      segment_time = min(segment_time + delta_t, global_duration_ - start_t);
+      cur_pt = getState(start_t + segment_time, 0);
+
+      // Check if point is inside ellipsoid
+      Eigen::Vector3d delta = cur_pt - first_pt;
+      Eigen::Vector3d delta_local = R.transpose() * delta;
+
+      // Ellipsoid equation: (x/a)^2 + (y/a)^2 + (z/b)^2 <= 1
+      double check = (delta_local.x() * delta_local.x() + delta_local.y() * delta_local.y()) / (minor_radius * minor_radius)
+                   + (delta_local.z() * delta_local.z()) / (major_radius * major_radius);
+
+      if (check > 1.0) break;
+
+      segment_len += (cur_pt - prev_pt).norm();
+      prev_pt = cur_pt;
+    }
+
+    int seg_num = floor(segment_len / dist_pt);
+    seg_num = max(6, seg_num);
+    duration = segment_time;
+    dt = duration / seg_num;
+    getTrajInfoInDuration(start_t, duration, dt, point_set, start_end_derivative);
+  }
 };
 
 struct PlanParameters {
@@ -131,6 +190,11 @@ struct PlanParameters {
   double time_adjust_ = 0.0;
 
   double relax_time1_, relax_time2_;
+
+  // ===== Dynamic Sliding Window Parameters =====
+  bool use_dynamic_sliding_window_;  // Enable dynamic sliding window direction
+  double sliding_window_minor_ratio_;  // Ratio of minor axis to major axis (0.5 = ellipse)
+  // ============================================
 };
 
 struct LocalTrajData {
@@ -260,6 +324,12 @@ public:
   vector<double> path_yaw_;
   double dt_yaw_;
   double dt_yaw_path_;
+
+  // ===== Dynamic Sliding Window Data =====
+  bool use_sliding_window_target_ = false;
+  Eigen::Vector3d sliding_window_target_;
+  Eigen::Vector3d sliding_window_direction_;
+  // ======================================
 
   void clearTopoPaths() {
     topo_traj_pos1_.clear();

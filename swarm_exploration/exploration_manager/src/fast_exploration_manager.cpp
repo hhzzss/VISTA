@@ -99,6 +99,8 @@ void FastExplorationManager::initialize(ros::NodeHandle& nh) {
   acvrp_client_ = nh.serviceClient<lkh_mtsp_solver::SolveMTSP>(
       "/solve_acvrp_" + to_string(ep_->drone_id_), true);
 
+  sliding_window_pub_ = nh.advertise<visualization_msgs::Marker>("/planning_vis/sliding_window_dir", 10);
+
   // Swarm
   for (auto& state : ed_->swarm_state_) {
     state.stamp_ = 0.0;
@@ -125,6 +127,10 @@ int FastExplorationManager::planExploreMotion(
   std::cout << "start pos: " << pos.transpose() << ", vel: " << vel.transpose()
             << ", acc: " << acc.transpose() << std::endl;
 
+  // ===== Update Local ESDF Window Center =====
+  sdf_map_->updateLocalWindowCenter(pos);
+  // ==========================================
+
   // Do global and local tour planning and retrieve the next viewpoint
 
   ed_->frontier_tour_.clear();
@@ -138,11 +144,15 @@ int FastExplorationManager::planExploreMotion(
 
   if (grid_ids.empty()) {
 
-    return NO_GRID;
-
     // No grid is assigned to this drone, but keep moving is necessary
     // Move to the closest targets
     ROS_WARN("Empty grid");
+    // Check if there are any frontiers to explore
+    if (ed_->averages_.empty()) {
+      ROS_WARN("No frontiers available, cannot plan motion");
+      return FAIL;
+    }
+
 
     double min_cost = 100000;
     int min_cost_id = -1;
@@ -155,6 +165,13 @@ int FastExplorationManager::planExploreMotion(
         min_cost_id = i;
       }
     }
+
+    // Safety check
+    if (min_cost_id < 0 || min_cost_id >= ed_->points_.size()) {
+      ROS_WARN("Failed to find valid target");
+      return FAIL;
+    }
+
     next_pos = ed_->points_[min_cost_id];
     next_yaw = ed_->yaws_[min_cost_id];
 
@@ -284,6 +301,42 @@ int FastExplorationManager::planExploreMotion(
   std::cout << "Next view: " << next_pos.transpose() << ", " << next_yaw << std::endl;
   ed_->next_pos_ = next_pos;
   ed_->next_yaw_ = next_yaw;
+
+  // ===== Set Dynamic Sliding Window Direction =====
+  planner_manager_->setSlidingWindowTarget(next_pos);
+
+  // Publish sliding window direction marker for visualization
+  if (sliding_window_pub_.getNumSubscribers() > 0) {
+    visualization_msgs::Marker mk;
+    mk.header.frame_id = "world";
+    mk.header.stamp = ros::Time::now();
+    mk.type = visualization_msgs::Marker::ARROW;
+    mk.action = visualization_msgs::Marker::ADD;
+    mk.id = 0;
+    mk.ns = "sliding_window_dir";
+
+    geometry_msgs::Point start, end;
+    start.x = pos.x();
+    start.y = pos.y();
+    start.z = pos.z();
+    end.x = next_pos.x();
+    end.y = next_pos.y();
+    end.z = next_pos.z();
+    mk.points.push_back(start);
+    mk.points.push_back(end);
+
+    mk.scale.x = 0.1;  // shaft diameter
+    mk.scale.y = 0.2;  // head diameter
+    mk.scale.z = 0.3;  // head length
+
+    mk.color.a = 0.8;
+    mk.color.r = 1.0;
+    mk.color.g = 0.5;
+    mk.color.b = 0.0;
+
+    sliding_window_pub_.publish(mk);
+  }
+  // ================================================
 
   if (planTrajToView(pos, vel, acc, yaw, next_pos, next_yaw) == FAIL) {
     return FAIL;

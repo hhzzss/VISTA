@@ -1,161 +1,79 @@
-# RACER
+# VISTA
 
-**RACER**, a **RA**pid **C**ollaborative **E**xplo**R**ation approach using a
-fleet of decentralized UAVs. 
+基于 [RACER](https://github.com/hhzzss/RACER) 的无人机自主探索研究工程，围绕**局部 ESDF 更新范围**与**目标方向引导的局部轨迹采样**开展改进与验证。当前研究对象是单架无人机；仓库保留 RACER 的多机框架，但不宣称新增了多机协同算法。
 
-We develop a fully decentralized approach for exploration tasks using a fleet of quadrotors. The proposed system features robustness against unstable communication and a high degree of coordination. The quadrotor team operates with asynchronous and limited communication and does not require any central control. The coverage paths and workload allocations of the team are optimized and balanced in order to fully realize the system's potential. The associated paper has been published in IEEE Transactions on Robotics and is selected as the **2023 IEEE TRO Best Paper**!
+**当前状态：研究原型。** 已有窗口接口、计算范围切换、椭球采样函数、可视化和单机适配代码；方向采样与默认探索主链路仍存在接入缺口，并发现全局引导轨迹状态初始化问题。当前版本不应作为已完成性能验证或可实飞版本使用。详见[实现对照与问题清单](docs/RACER_CHANGES.md)及[验证记录](docs/VALIDATION.md)。
 
+## 阅读导航
 
-Try [Quick Start](#quick-start) to run a demo in a few minutes!  
+| 文档 | 内容 |
+| --- | --- |
+| [项目结构](docs/PROJECT_STRUCTURE.md) | 文件夹用途、25 个有效 ROS 包、关键入口及数据流 |
+| [相对 RACER 的改动](docs/RACER_CHANGES.md) | 逐项代码证据、实现边界、与开题报告的对应关系 |
+| [运行与复现](docs/REPRODUCIBILITY.md) | 环境依赖、单机启动、配置方法与实验准备 |
+| [验证记录](docs/VALIDATION.md) | 本次实际执行的检查、结果及尚未完成的验证 |
+| [配置速查](swarm_exploration/config_changes.md) | 窗口参数、默认值与修改位置 |
+| [后续交接](HANDOVER.md) | 继续研究时的优先工作 |
+| [来源说明](THIRD_PARTY.md) | 上游提交、原论文与第三方内容 |
 
-<p align="center">
-  <img src="files/racer1.gif" width = "400" height = "225"/>
-  <img src="files/racer2.gif" width = "400" height = "225"/>
-</p>
+## 当前改动
 
-__Complete video__: [video](https://www.bilibili.com/video/BV1ec411J7ps/?spm_id_from=333.999.0.0&vd_source=ce9122be0193fcad2e9384dacc62f4fa).
+1. **局部 ESDF 更新窗口。** 增加 `use_local_window`、窗口尺寸与中心更新接口。启用时，距离变换使用跟随当前位置的轴对齐窗口边界；关闭时使用原有的局部更新包围盒。地图缓冲区仍按完整地图尺寸分配。
+2. **方向引导的椭球轨迹采样。** 增加长半轴指向目标、短半轴比例可配置的采样方法，并在 `paramLocalTraj()` 中选择球形或椭球形区域。该分支属于已有全局/拓扑轨迹处理链路，尚未接入默认的探索轨迹生成路径。
+3. **单机适配与诊断。** 增加无网格分配时的前沿目标回退、空邻机轨迹时不启用 SWARM 代价的处理，以及局部窗口和目标方向 Marker。
+4. **发布整理。** 更正 RACER 论文引用和项目归属，补充中文解释文档，去掉启动脚本中的机器专属路径及全局杀进程命令，并停止跟踪历史编译产物。
 
-__Authors__: [Boyu Zhou](http://sysu-star.com) from SYSU STAR Group, and Hao Xu, [Shaojie Shen](http://uav.ust.hk/group/) from the [HKUST Aerial Robotics Group](http://uav.ust.hk/).
+**贡献边界：** `bspline/` 与 `bspline_opt/` 的样条表示、主要目标函数及优化器继承自 RACER；本版本没有实现新的 B 样条求解算法、EOHDT 或 ESDF-free 避障。仓库中没有可支持内存、耗时或探索效率提升百分比的正式实验结果。
 
-Please cite our paper if you use this project in your research:
-- [__RACER: Rapid Collaborative Exploration with a
-Decentralized Multi-UAV System__](https://arxiv.org/abs/2209.08533), Boyu Zhou, Hao Xu,  Shaojie Shen, IEEE Transactions on Robotics (**T-RO**) ,
+## 构建入口
 
+原 RACER README 提供 Ubuntu 18.04 / ROS Melodic 与 Ubuntu 20.04 / ROS Noetic 的使用说明；这不代表 VISTA 已在两套环境中重新通过验证。优先使用 Ubuntu 20.04 / ROS Noetic，并先阅读[本次检查结果](docs/VALIDATION.md)。
+
+项目是由多个 catkin 包组成的源码集合，放在工作空间的 `src/VISTA` 下：
+
+```bash
+mkdir -p ~/vista_ws/src
+cd ~/vista_ws/src
+git clone https://github.com/hhzzss/VISTA.git
+cd ~/vista_ws
+source /opt/ros/noetic/setup.bash
+# 先按 docs/REPRODUCIBILITY.md 安装并检查依赖
+catkin_make -j2
+source devel/setup.bash
 ```
+
+## 单机仿真入口
+
+在正确构建和 source 工作空间后：
+
+```bash
+roslaunch exploration_manager single_drone_exploration_with_map.xml map_name:=pillar.pcd
+```
+
+该入口包含地图发布、单机规划、轻量仿真器和 RViz。用 RViz 的 `2D Nav Goal` 触发探索。`simulator_light.xml` 实际使用 `poscmd_2_odom` 与点云传感渲染，不能直接称为已完成 Gazebo 物理仿真验证。
+
+可选地图：`pillar.pcd`、`office.pcd`、`office2.pcd`、`office3.pcd`。更换地图时还需核对地图尺寸、探索边界与起点，不能只替换文件名。具体命令、原多机入口和现有局限见[运行说明](docs/REPRODUCIBILITY.md)。
+
+## 研究背景
+
+对应课题为“基于局部 ESDF 滑动窗口的 B 样条轨迹优化及无人机自主搜索研究”。研究关注窗口改动怎样影响距离与梯度查询、局部规划及闭环探索。开题报告中的 G0 / G1 / G2 消融、45 次任务和数据采集方案属于后续实验计划；本仓库尚未提供完整实施结果。开题报告原件保留在本地论文资料目录，不作为本次公开代码发布的一部分。
+
+## RACER 来源与引用
+
+基线提交：`049c332e3634ef72d8beb155b4c13dc91ca52916`。2026-11-16 核对时，本地基线、`hhzzss/RACER` 与上游 `Robotics-STAR-Lab/RACER` 的 `main` 指向同一提交。原项目 README 原文保存在 [docs/upstream/README.RACER.md](docs/upstream/README.RACER.md)。
+
+引用 RACER 时请保留原论文题名与作者，不能把 RACER 的论文、演示或获奖信息改署为 VISTA：
+
+```bibtex
 @article{zhou2023racer,
-  title={Racer: Rapid collaborative exploration with a decentralized multi-uav system},
+  title={RACER: Rapid Collaborative Exploration With a Decentralized Multi-UAV System},
   author={Zhou, Boyu and Xu, Hao and Shen, Shaojie},
   journal={IEEE Transactions on Robotics},
   year={2023},
-  publisher={IEEE}
+  volume={39},
+  number={3},
+  pages={1816--1835}
 }
 ```
 
-Please kindly star :star: this project if it helps you. We take great efforts to develope and maintain it :grin::grin:.
-
-## Table of Contents
-
-- [RACER](#racer)
-  - [Table of Contents](#table-of-contents)
-  - [Quick Start](#quick-start)
-  - [Exploring Different Environments](#exploring-different-environments)
-  - [Acknowledgements](#acknowledgements)
-
-## Quick Start
-
-This project has been tested on Ubuntu 18.04(ROS Melodic) and 20.04(ROS Noetic).
-
-Firstly, you should install __nlopt v2.7.1__:
-```
-git clone -b v2.7.1 https://github.com/stevengj/nlopt.git
-cd nlopt
-mkdir build
-cd build
-cmake ..
-make
-sudo make install
-```
-
-Next, you can run the following commands to install other required tools:
-```
-sudo apt-get install libarmadillo-dev
-```
-
-After that, you need to install __LKH-3__(LKH-3.0.6 version is recommended) with the following commands. Please make sure the executable file `LKH` is correctly placed at `/usr/local/bin`.
-
-```
-wget http://akira.ruc.dk/~keld/research/LKH-3/LKH-3.0.6.tgz
-tar xvfz LKH-3.0.6.tgz
-cd LKH-3.0.6
-make
-sudo cp LKH /usr/local/bin
-```
-<!-- To simulate the depth camera, we use a simulator based on CUDA Toolkit. Please install it first following the [instruction of CUDA](https://developer.nvidia.com/zh-cn/cuda-toolkit). 
-
-After successful installation, in the **local_sensing** package in **uav_simulator**, remember to change the 'arch' and 'code' flags in CMakelist.txt according to your graphics card devices. You can check the right code [here](https://github.com/tpruvot/ccminer/wiki/Compatibility). For example:
-
-```
-  set(CUDA_NVCC_FLAGS 
-    -gencode arch=compute_61,code=sm_61;
-  ) 
-``` -->
-
-Then simply clone and compile our package (using ssh here):
-
-```
-cd ${YOUR_WORKSPACE_PATH}/src
-git clone https://github.com/SYSU-STAR/RACER.git
-cd ../ 
-catkin_make
-```
-
-After compilation you can start a sample swarm exploration demo. Firstly run ```Rviz``` for visualization: 
-
-```
-source devel/setup.bash && roslaunch exploration_manager rviz.launch
-```
-then run the simulation (run in a new terminals): 
-```
-source devel/setup.bash && roslaunch exploration_manager swarm_exploration.launch
-```
-
-By default you can see a pillar-like environment. Trigger the quadrotor to start exploration by the ```2D Nav Goal``` tool in ```Rviz```. A sample is shown below, where unexplored structures are shown in grey and explored ones are shown in colorful voxels. The FoV and trajectories of the quadrotor are also displayed.
-
-<!-- You will find a cluttered scene to be explored (20m x 12m x 2m) and the drone . You can trigger the exploration to start by  A sample simulation is shown in the figure. The unknown obstacles are shown in grey, while the frontiers are shown as colorful voxels. The planned and executed trajectories are also displayed. -->
-
- <p id="demo1" align="center">
-  <img src="files/racer3.gif" width = "600" height = "325"/>
- </p>
-
-
-## Exploring Different Environments
-
-The exploration environments in our simulator are represented by [.pcd files](https://pointclouds.org/documentation/tutorials/pcd_file_format.html).
-We provide several sample environments, which can be selected in [swarm_exploration.launch](swarm_exploration/exploration_manager/launch/swarm_exploration.launch):
-
-```xml
-  <!-- Change office.pcd to specify the exploration environment -->
-  <!-- We provide office.pcd, office2.pcd, office3.pcd and pillar.pcd in this repo -->
-  <node pkg ="map_generator" name ="map_pub" type ="map_pub" output = "screen" args="$(find map_generator)/resource/pillar.pcd"/>    
-```
-
-Other examples can be found in [map_generator/resource](uav_simulator/map_generator/resource). If you want to use your own environments, simply place the .pcd files in [map_generator/resource](uav_simulator/map_generator/resource), and follow the comments above to specify it. You may also need to change the bounding box of explored space in [exploration.launch](swarm_exploration/exploration_manager/launch/single_drone_planner.xml):
-
-```xml
-  <arg name="box_min_x" value="-10.0"/>
-  <arg name="box_min_y" value="-15.0"/>
-  <arg name="box_min_z" value=" 0.0"/>
-  <arg name="box_max_x" value="10.0"/>
-  <arg name="box_max_y" value="15.0"/>
-  <arg name="box_max_z" value=" 2.0"/>
-```
-
-To create your own .pcd environments, you can use [this tool](https://github.com/HKUST-Aerial-Robotics/FUEL#creating-a-pcd-environment). 
-
-<!-- ## Creating a _.pcd_ Environment
-
-We provide a simple tool to create .pcd environments.
-First, run:
-
-```
-  rosrun map_generator click_map
-```
-
-Then in ```Rviz```, use the ```2D Nav Goal``` tool (shortcut G) to create your map. Two consecutively clicked points form a wall.
-An example is illustrated:-->
-
-<p id="demo5" align="center">
-<img src="files/create_map.gif" width = "600" height = "340"/>
-</p>
-
-<!-- After you've finished, run the following node to save the map in another terminal:
-
-```
-  rosrun map_generator map_recorder ~/
-```
-
-Normally, a file named __tmp.pcd__ will be saved at ```~/```. You may replace ```~/``` with any locations you want.
-Lastly, you can use this file for exploration, as mentioned [here](#exploring-different-environments). -->
-
-## Acknowledgements
-  We use **NLopt** for non-linear optimization and use **LKH** for travelling salesman problem.
+[原论文](https://arxiv.org/abs/2209.08533)及[上游仓库](https://github.com/Robotics-STAR-Lab/RACER)。第三方说明见 [THIRD_PARTY.md](THIRD_PARTY.md)。

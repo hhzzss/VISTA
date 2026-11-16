@@ -31,6 +31,19 @@ void SDFMap::initMap(ros::NodeHandle& nh) {
   nh.param("sdf_map/signed_dist", mp_->signed_dist_, false);
   nh.param("sdf_map/no_drone_1", mp_->no_drone_1_, false);
 
+  // ===== Local ESDF Window Params =====
+  nh.param("sdf_map/use_local_window", mp_->use_local_window_, false);
+  double local_window_x, local_window_y, local_window_z;
+  nh.param("sdf_map/local_window_x", local_window_x, 10.0);
+  nh.param("sdf_map/local_window_y", local_window_y, 10.0);
+  nh.param("sdf_map/local_window_z", local_window_z, 5.0);
+  mp_->local_window_size_ = Eigen::Vector3d(local_window_x, local_window_y, local_window_z);
+  mp_->local_window_half_size_ = mp_->local_window_size_ / 2.0;
+  ROS_INFO("[SDFMap] Local window: %s, size: [%.2f, %.2f, %.2f]",
+           mp_->use_local_window_ ? "enabled" : "disabled",
+           local_window_x, local_window_y, local_window_z);
+  // ===================================
+
   mp_->local_bound_inflate_ = max(mp_->resolution_, mp_->local_bound_inflate_);
   mp_->resolution_inv_ = 1 / mp_->resolution_;
   mp_->map_origin_ = Eigen::Vector3d(-x_size / 2.0, -y_size / 2.0, mp_->ground_height_);
@@ -96,6 +109,15 @@ void SDFMap::initMap(ros::NodeHandle& nh) {
   caster_.reset(new RayCaster);
   caster_->setParams(mp_->resolution_, mp_->map_origin_);
 
+  // Initialize local window indices if enabled
+  if (mp_->use_local_window_) {
+    md_->local_window_min_idx_ = Eigen::Vector3i::Zero();
+    md_->local_window_max_idx_ = mp_->map_voxel_num_ - Eigen::Vector3i::Ones();
+    md_->local_window_min_ = mp_->map_min_boundary_;
+    md_->local_window_max_ = mp_->map_max_boundary_;
+    ROS_INFO("[SDFMap] Local window indices initialized");
+  }
+
   for (int i = 0; i < 3; ++i) {
     md_->all_min_[i] = 1000000;
     md_->all_max_[i] = -1000000;
@@ -159,8 +181,8 @@ void SDFMap::resetBuffer(const Eigen::Vector3d& min_pos, const Eigen::Vector3d& 
 
 template <typename F_get_val, typename F_set_val>
 void SDFMap::fillESDF(F_get_val f_get_val, F_set_val f_set_val, int start, int end, int dim) {
-  int v[mp_->map_voxel_num_(dim)];
-  double z[mp_->map_voxel_num_(dim) + 1];
+  std::vector<int> v(mp_->map_voxel_num_(dim));
+  std::vector<double> z(mp_->map_voxel_num_(dim) + 1);
 
   int k = start;
   v[start] = start;
@@ -193,8 +215,15 @@ void SDFMap::fillESDF(F_get_val f_get_val, F_set_val f_set_val, int start, int e
 }
 
 void SDFMap::updateESDF3d() {
-  Eigen::Vector3i min_esdf = md_->local_bound_min_;
-  Eigen::Vector3i max_esdf = md_->local_bound_max_;
+  // Use local window bounds if enabled, otherwise use local update bounds
+  Eigen::Vector3i min_esdf, max_esdf;
+  if (mp_->use_local_window_) {
+    min_esdf = md_->local_window_min_idx_;
+    max_esdf = md_->local_window_max_idx_;
+  } else {
+    min_esdf = md_->local_bound_min_;
+    max_esdf = md_->local_bound_max_;
+  }
 
   if (mp_->optimistic_) {
     for (int x = min_esdf[0]; x <= max_esdf[0]; x++)
@@ -557,10 +586,39 @@ void SDFMap::getUpdatedBox(Eigen::Vector3d& bmin, Eigen::Vector3d& bmax, bool re
   if (reset) md_->reset_updated_box_ = true;
 }
 
+void SDFMap::setLocalWindowSize(const Eigen::Vector3d& size) {
+  mp_->local_window_size_ = size;
+  mp_->local_window_half_size_ = size / 2.0;
+  ROS_INFO("[SDFMap] Set local window size: [%.2f, %.2f, %.2f]", size.x(), size.y(), size.z());
+}
+
+void SDFMap::updateLocalWindowCenter(const Eigen::Vector3d& center) {
+  if (!mp_->use_local_window_) return;
+
+  md_->local_window_center_ = center;
+  md_->local_window_min_ = center - mp_->local_window_half_size_;
+  md_->local_window_max_ = center + mp_->local_window_half_size_;
+
+  // Ensure window is within global map bounds
+  for (int i = 0; i < 3; ++i) {
+    md_->local_window_min_[i] = max(md_->local_window_min_[i], mp_->map_min_boundary_[i]);
+    md_->local_window_max_[i] = min(md_->local_window_max_[i], mp_->map_max_boundary_[i]);
+  }
+
+  // Update index bounds
+  posToIndex(md_->local_window_min_, md_->local_window_min_idx_);
+  posToIndex(md_->local_window_max_, md_->local_window_max_idx_);
+  boundIndex(md_->local_window_min_idx_);
+  boundIndex(md_->local_window_max_idx_);
+
+  // Reset ESDF buffer outside local window (optional optimization)
+  // This keeps memory clean but is not strictly necessary
+}
+
 double SDFMap::getDistWithGrad(const Eigen::Vector3d& pos, Eigen::Vector3d& grad) {
-  if (!isInMap(pos)) {
+  if (!isInMap(pos) || !isInLocalWindow(pos)) {
     grad.setZero();
-    return 0;
+    return mp_->default_dist_;
   }
 
   /* trilinear interpolation */

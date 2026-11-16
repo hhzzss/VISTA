@@ -68,6 +68,7 @@ public:
 private:
   shared_ptr<EDTEnvironment> edt_environment_;
   ros::ServiceClient tsp_client_, acvrp_client_;
+  ros::Publisher sliding_window_pub_;
 
   // Find optimal tour for coarse viewpoints of all frontiers
   void findGlobalTour(const Vector3d& cur_pos, const Vector3d& cur_vel, const Vector3d cur_yaw,

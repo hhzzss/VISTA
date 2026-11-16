@@ -37,6 +37,14 @@ void FastPlannerManager::initPlanModules(ros::NodeHandle& nh) {
   nh.param("manager/relax_time1", pp_.relax_time1_, 0.5);
   nh.param("manager/relax_time2", pp_.relax_time2_, 0.5);
 
+  // ===== Dynamic Sliding Window Parameters =====
+  nh.param("manager/use_dynamic_sliding_window", pp_.use_dynamic_sliding_window_, false);
+  nh.param("manager/sliding_window_minor_ratio", pp_.sliding_window_minor_ratio_, 0.6);
+  ROS_INFO("[PlannerManager] Dynamic sliding window: %s, minor ratio: %.2f",
+           pp_.use_dynamic_sliding_window_ ? "enabled" : "disabled",
+           pp_.sliding_window_minor_ratio_);
+  // ============================================
+
   bool use_geometric_path, use_kinodynamic_path, use_topo_path, use_optimization,
       use_active_perception;
   nh.param("manager/use_geometric_path", use_geometric_path, false);
@@ -185,11 +193,13 @@ bool FastPlannerManager::kinodynamicReplan(const Eigen::Vector3d& start_pt,
   bspline_optimizers_[0]->setBoundaryStates(start, end);
   if (time_lb > 0) bspline_optimizers_[0]->setTimeLowerBound(time_lb);
 
-  // Swarm collision avoidance term
-  cost_function |= BsplineOptimizer::SWARM;
+  // Swarm collision avoidance (auto-enable for multi-drone)
   vector<NonUniformBspline> trajs;
   swarm_traj_data_.getValidTrajs(trajs);
-  bspline_optimizers_[0]->setSwarmTrajs(trajs);
+  if (!trajs.empty()) {
+    cost_function |= BsplineOptimizer::SWARM;
+    bspline_optimizers_[0]->setSwarmTrajs(trajs);
+  }
 
   bspline_optimizers_[0]->optimize(ctrl_pts, ts, cost_function, 1, 1);
   local_data_.position_traj_.setUniformBspline(ctrl_pts, pp_.bspline_degree_, ts);
@@ -257,11 +267,13 @@ void FastPlannerManager::planExploreTraj(const vector<Eigen::Vector3d>& tour,
   bspline_optimizers_[0]->setBoundaryStates(start, end);
   if (time_lb > 0) bspline_optimizers_[0]->setTimeLowerBound(time_lb);
 
-  // Swarm collision avoidance term
-  cost_func |= BsplineOptimizer::SWARM;
+  // Swarm collision avoidance (auto-enable for multi-drone)
   vector<NonUniformBspline> trajs;
   swarm_traj_data_.getValidTrajs(trajs);
-  bspline_optimizers_[0]->setSwarmTrajs(trajs);
+  if (!trajs.empty()) {
+    cost_func |= BsplineOptimizer::SWARM;
+    bspline_optimizers_[0]->setSwarmTrajs(trajs);
+  }
 
   bspline_optimizers_[0]->optimize(ctrl_pts, dt, cost_func, 1, 1);
   local_data_.position_traj_.setUniformBspline(ctrl_pts, pp_.bspline_degree_, dt);
@@ -559,8 +571,31 @@ void FastPlannerManager::optimizeTopoBspline(
 Eigen::MatrixXd FastPlannerManager::paramLocalTraj(double start_t, double& dt, double& duration) {
   vector<Eigen::Vector3d> point_set;
   vector<Eigen::Vector3d> start_end_derivative;
-  global_data_.getTrajInfoInSphere(start_t, pp_.local_traj_len_, pp_.ctrl_pt_dist, point_set,
-      start_end_derivative, dt, duration);
+
+  // ===== Dynamic Sliding Window: Use ellipsoid if target is set =====
+  if (pp_.use_dynamic_sliding_window_ && plan_data_.use_sliding_window_target_ &&
+      plan_data_.sliding_window_direction_.norm() > 1e-3) {
+    // Use ellipsoid sliding window aligned with direction
+    double major_radius = pp_.local_traj_len_;  // Along direction
+    double minor_radius = pp_.local_traj_len_ * pp_.sliding_window_minor_ratio_;  // Perpendicular
+
+    global_data_.getTrajInfoInEllipsoid(start_t,
+                                        plan_data_.sliding_window_direction_,
+                                        major_radius,
+                                        minor_radius,
+                                        pp_.ctrl_pt_dist,
+                                        point_set,
+                                        start_end_derivative,
+                                        dt,
+                                        duration);
+    ROS_INFO("[PlannerManager] Using ellipsoid sliding window: major=%.2f, minor=%.2f",
+             major_radius, minor_radius);
+  } else {
+    // Fall back to sphere sliding window (original behavior)
+    global_data_.getTrajInfoInSphere(start_t, pp_.local_traj_len_, pp_.ctrl_pt_dist, point_set,
+        start_end_derivative, dt, duration);
+  }
+  // =================================================================
 
   Eigen::MatrixXd ctrl_pts;
   NonUniformBspline::parameterizeToBspline(
@@ -885,5 +920,45 @@ bool FastPlannerManager::checkSwarmCollision(const int& id) {
   }
   return true;
 }
+
+// ===== Dynamic Sliding Window Implementation =====
+void FastPlannerManager::setSlidingWindowTarget(const Eigen::Vector3d& target_pos) {
+  if (!pp_.use_dynamic_sliding_window_) return;
+
+  // Check if global trajectory is initialized
+  if (global_data_.global_duration_ <= 0) {
+    ROS_WARN("[PlannerManager] Cannot set sliding window: no global traj");
+    return;
+  }
+
+  // Compute direction from current position to target
+  double t_now = (ros::Time::now() - global_data_.global_start_time_).toSec();
+  Eigen::Vector3d cur_pos = global_data_.getState(t_now, 0);
+  Eigen::Vector3d direction = target_pos - cur_pos;
+
+  // Store target for later use in paramLocalTraj
+  plan_data_.sliding_window_target_ = target_pos;
+  plan_data_.sliding_window_direction_ = direction;
+  plan_data_.use_sliding_window_target_ = true;
+
+  ROS_INFO("[PlannerManager] Sliding window aligned to target: [%.2f, %.2f, %.2f]",
+           target_pos.x(), target_pos.y(), target_pos.z());
+}
+
+void FastPlannerManager::setSlidingWindowDirection(const Eigen::Vector3d& direction) {
+  if (!pp_.use_dynamic_sliding_window_) return;
+
+  plan_data_.sliding_window_direction_ = direction;
+  plan_data_.use_sliding_window_target_ = false;
+
+  ROS_INFO("[PlannerManager] Sliding window direction set: [%.2f, %.2f, %.2f]",
+           direction.x(), direction.y(), direction.z());
+}
+
+void FastPlannerManager::disableDynamicSlidingWindow() {
+  plan_data_.use_sliding_window_target_ = false;
+  plan_data_.sliding_window_direction_ = Eigen::Vector3d::Zero();
+}
+// ==================================================
 
 }  // namespace fast_planner

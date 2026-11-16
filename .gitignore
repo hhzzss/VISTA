@@ -1,3 +1,30 @@
 swarm_exploration/utils/lkh_mtsp_solver/resource/*.atsp
 swarm_exploration/utils/lkh_mtsp_solver/resource/*.par
 swarm_exploration/utils/lkh_mtsp_solver/resource/*.tour
+
+# Catkin / CMake outputs (including inherited nested build directories)
+build/
+devel/
+install/
+log/
+logs/
+.catkin_tools/
+CMakeUserPresets.json
+*.o
+*.a
+*.so
+*.so.*
+uav_simulator/Utils/odom_visualization/bin/
+uav_simulator/Utils/pose_utils/lib/
+uav_simulator/Utils/multi_map_server/quadrotor_msgs/lib/
+
+# Local experiments and credentials
+*.bag
+*.bag.active
+__pycache__/
+*.pyc
+.env
+.env.*
+!.env.example
+*.pem
+*.key

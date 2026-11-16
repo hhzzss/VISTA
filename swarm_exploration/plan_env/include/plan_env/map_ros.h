@@ -46,6 +46,7 @@ private:
   void publishUpdateRange();
   void publishUnknown();
   void publishDepth();
+  void publishLocalWindow();
 
   void processDepthImage();
 
@@ -68,7 +69,7 @@ private:
   SynchronizerCloudPose sync_cloud_pose_;
 
   ros::Publisher map_local_pub_, map_local_inflate_pub_, esdf_pub_, map_all_pub_, unknown_pub_,
-      update_range_pub_, depth_pub_;
+      update_range_pub_, depth_pub_, local_window_pub_;
   ros::Timer esdf_timer_, vis_timer_;
   ros::Subscriber basecoor_sub_;
 

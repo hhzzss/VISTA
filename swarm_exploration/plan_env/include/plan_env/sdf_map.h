@@ -65,6 +65,15 @@ public:
   int getVoxelNum();
   bool getBaseCoor(const int& id, Eigen::Vector4d& transform);
 
+  // ===== Local ESDF Window Functions =====
+  void setLocalWindowSize(const Eigen::Vector3d& size);
+  void updateLocalWindowCenter(const Eigen::Vector3d& center);
+  bool isInLocalWindow(const Eigen::Vector3d& pos);
+  bool isInLocalWindow(const Eigen::Vector3i& idx);
+  void getLocalWindow(Eigen::Vector3d& min, Eigen::Vector3d& max);
+  void setLocalWindowEnabled(bool enabled);
+  // ======================================
+
   // Swarm
   shared_ptr<MultiMapManager> mm_;
   friend MultiMapManager;
@@ -120,6 +129,12 @@ struct MapParam {
   Eigen::Vector3d vmin_, vmax_;
   vector<Eigen::Vector3d> vertices_;
   vector<Eigen::Vector3d> normals_;
+
+  // ===== Local ESDF Window Params =====
+  bool use_local_window_;
+  Eigen::Vector3d local_window_size_;  // Size of local window (x, y, z)
+  Eigen::Vector3d local_window_half_size_;
+  // ===================================
 };
 
 struct MapData {
@@ -142,6 +157,12 @@ struct MapData {
 
   // Swarm base coordinate transform
   map<int, Eigen::Vector4d> swarm_transform_;
+
+  // ===== Local ESDF Window Data =====
+  Eigen::Vector3d local_window_center_;
+  Eigen::Vector3d local_window_min_, local_window_max_;
+  Eigen::Vector3i local_window_min_idx_, local_window_max_idx_;
+  // ==================================
 
   EIGEN_MAKE_ALIGNED_OPERATOR_NEW
 };
@@ -285,5 +306,34 @@ inline void SDFMap::inflatePoint(
         pts[num++] = Eigen::Vector3i(pt(0) + x, pt(1) + y, pt(2) + z);
       }
 }
+
+// ===== Local ESDF Window Inline Functions =====
+inline bool SDFMap::isInLocalWindow(const Eigen::Vector3d& pos) {
+  if (!mp_->use_local_window_) return true;
+  for (int i = 0; i < 3; ++i) {
+    if (pos[i] < md_->local_window_min_[i] || pos[i] > md_->local_window_max_[i])
+      return false;
+  }
+  return true;
+}
+
+inline bool SDFMap::isInLocalWindow(const Eigen::Vector3i& idx) {
+  if (!mp_->use_local_window_) return true;
+  for (int i = 0; i < 3; ++i) {
+    if (idx[i] < md_->local_window_min_idx_[i] || idx[i] > md_->local_window_max_idx_[i])
+      return false;
+  }
+  return true;
+}
+
+inline void SDFMap::getLocalWindow(Eigen::Vector3d& min, Eigen::Vector3d& max) {
+  min = md_->local_window_min_;
+  max = md_->local_window_max_;
+}
+
+inline void SDFMap::setLocalWindowEnabled(bool enabled) {
+  mp_->use_local_window_ = enabled;
+}
+// ==============================================
 }  // namespace fast_planner
 #endif
