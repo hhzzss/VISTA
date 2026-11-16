@@ -23,9 +23,17 @@
 
 使用已有 WSL `Ubuntu2004-E` 中的 Ubuntu 20.04 / ROS Noetic、GCC 和 CMake。在本地论文项目的独立工作目录创建源码副本和新的 catkin 工作空间，使用 `catkin_make -j2 -l2` 检查；没有在原项目中复用历史 CMake 缓存，也没有为了本次整理安装或升级系统依赖。
 
-CMake 配置与生成成功；`plan_env`、`bspline`、`path_searching`、内部 LKH 求解库及若干仿真组件已实际编译链接通过，包含当前修改过的 ESDF 地图模块。编译过程中也出现继承代码的警告，未在本次整理中逐项修复。
+CMake 配置与生成成功；`plan_env`、`bspline`、`path_searching`、`active_perception`、内部 LKH 求解库及若干仿真组件已实际编译链接通过，包含当前修改过的 ESDF 地图模块。编译过程中也出现继承代码的警告，未在本次整理中逐项修复。
 
 **完整工程尚未验证通过。** 环境检查确认缺少工程约定路径的 `/usr/local/include/nlopt.hpp`、`/usr/local/lib/libnlopt.so`，以及部分求解分支需要的 `/usr/local/bin/LKH`。内部 LKH 库能编译不表示该外部可执行文件存在；CMake 能生成也不表示硬编码依赖的头文件和库都已满足。应先按[运行说明](REPRODUCIBILITY.md)补齐依赖，再重新构建完整工程。
+
+实际构建已在 `bspline_opt` 目标报告缺少依赖库：
+
+```text
+No rule to make target '/usr/local/lib/libnlopt.so', needed by '.../libbspline_opt.so'. Stop.
+```
+
+因此本次完整构建结论为失败，不能报告为全工程编译通过；后续依赖该优化库的规划管理与探索可执行目标也未完成本次完整构建验证。这一环境依赖缺失与源码静态核验发现的方向接入问题分别记录。
 
 ## 静态核验确认的问题
 
